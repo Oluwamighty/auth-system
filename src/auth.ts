@@ -1,14 +1,17 @@
 import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
+import CredentialsProvider from "next-auth/providers/credentials";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const authOptions = {
   providers: [
-    Credentials({
+    CredentialsProvider({
+      name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null;
+
         if (
           credentials.email === "test@example.com" &&
           credentials.password === "password123"
@@ -26,23 +29,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: {
     signIn: "/login",
   },
-  callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
-      const isAuthPage = nextUrl.pathname.startsWith("/login") ||
-                         nextUrl.pathname.startsWith("/register");
-      const isProtectedPage = nextUrl.pathname.startsWith("/dashboard") ||
-                               nextUrl.pathname.startsWith("/profile");
+  secret: process.env.AUTH_SECRET,
+};
 
-      if (!isLoggedIn && isProtectedPage) {
-        return Response.redirect(new URL("/login", nextUrl));
-      }
-
-      if (isLoggedIn && isAuthPage) {
-        return Response.redirect(new URL("/dashboard", nextUrl));
-      }
-
-      return true;
-    },
-  },
-});
+export default NextAuth(authOptions);
