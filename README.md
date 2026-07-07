@@ -1,36 +1,222 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🔐 AuthSystem — Authentication System
 
-## Getting Started
+A fully functional authentication system built with Next.js 15, NextAuth.js v4 and TypeScript. Features protected routes, session management, credential-based login and a responsive dark-themed UI.
 
-First, run the development server:
+## 🚀 Live Demo
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+🔗 **[auth-system-9bo7.vercel.app](https://auth-system-9bo7.vercel.app/)**
+
+**Test credentials:**
+- Email: `test@example.com`
+- Password: `password123`
+
+---
+
+## 📸 Features
+
+- 🏠 **Landing Page** — public homepage with Sign In and Create Account links
+- 🔑 **Login Page** — credential-based authentication with NextAuth.js
+- 📝 **Register Page** — full form validation including password match check
+- 🛡️ **Dashboard** — protected page showing session user data
+- 👤 **Profile Page** — protected page with user details and avatar
+- 🔀 **Smart Redirects** — logged in users can't visit login/register, logged out users can't visit dashboard/profile
+- 🧭 **Dynamic Navbar** — shows different links based on auth state
+- 🚪 **Sign Out** — clears session and redirects to home
+
+---
+
+## 🔒 How Authentication Works
+
+```
+User fills login form
+        ↓
+NextAuth calls authorize() in auth.ts
+        ↓
+Credentials valid → JWT session created → cookie set
+        ↓
+router.push("/dashboard")
+        ↓
+Middleware checks session on every request
+        ↓
+Protected page + no session → redirect to /login
+Auth page + active session → redirect to /dashboard
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🛡️ Route Protection
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Middleware runs before every request and enforces these rules:
 
-## Learn More
+| User State | Visits | Result |
+|---|---|---|
+| Logged out | `/dashboard` | Redirects to `/login` |
+| Logged out | `/profile` | Redirects to `/login` |
+| Logged in | `/login` | Redirects to `/dashboard` |
+| Logged in | `/register` | Redirects to `/dashboard` |
+| Anyone | `/` | Allowed through |
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🏗️ Architecture — Server + Client Component Split
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Login and Register pages use a **Server + Client Component split** — a key Next.js pattern:
 
-## Deploy on Vercel
+```
+login/
+├── page.tsx       → Server Component (checks session, redirects if logged in)
+└── LoginForm.tsx  → Client Component (form state, signIn, useRouter)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+register/
+├── page.tsx       → Server Component (checks session, redirects if logged in)
+└── RegisterForm.tsx → Client Component (form state, validation)
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Why this matters:**
+
+```
+❌ Single Client Component:
+Browser loads → JS runs → session checked → redirect if logged in
+(user might briefly see the login page before redirect)
+
+✅ Server + Client split:
+Server checks session first → redirect before page loads
+(user never sees the login page at all)
+```
+
+The Server Component handles the auth check using `getServerSession` — this runs on the server before anything is sent to the browser. The Client Component handles form interactivity — `useState`, `signIn`, `useRouter` — which require the browser.
+
+This is the **island architecture** pattern — server components handle data and auth checks, small client components handle interactivity.
+
+---
+
+## 🛠️ Tech Stack
+
+| Technology | Purpose |
+|---|---|
+| Next.js 15 | Framework — App Router, SSR |
+| NextAuth.js v4 | Authentication — sessions, JWT |
+| TypeScript | Type safety throughout |
+| Tailwind CSS | Utility-first styling |
+| Middleware | Route protection at the edge |
+
+---
+
+## ⚛️ Concepts Demonstrated
+
+- NextAuth.js v4 — `CredentialsProvider`, `authOptions`, `getServerSession`
+- Server + Client Component split — server handles auth checks, client handles interactivity
+- Island architecture — minimal client JavaScript, maximum server rendering
+- JWT session management — token-based authentication
+- Next.js Middleware — edge-level route protection with `getToken`
+- Server Components — session checking with `getServerSession`
+- Client Components — `useSession` for dynamic navbar
+- `SessionProvider` — sharing session across client components
+- Protected routes — server-side redirect with `redirect()` from Next.js
+- Controlled forms — validation with inline error messages
+- `useRouter` — programmatic navigation after login
+- `force-dynamic` — preventing static generation on auth pages
+
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── auth.ts                          → NextAuth config + authOptions
+├── middleware.ts                    → Route protection logic
+├── app/
+│   ├── layout.tsx                   → Root layout with SessionProvider + Navbar
+│   ├── page.tsx                     → Landing page (public)
+│   ├── login/
+│   │   ├── page.tsx                 → Server Component (session check + redirect)
+│   │   └── LoginForm.tsx            → Client Component (form state + signIn)
+│   ├── register/
+│   │   ├── page.tsx                 → Server Component (session check + redirect)
+│   │   └── RegisterForm.tsx         → Client Component (form state + validation)
+│   ├── dashboard/
+│   │   └── page.tsx                 → Protected dashboard
+│   ├── profile/
+│   │   └── page.tsx                 → Protected profile
+│   └── api/
+│       └── auth/
+│           └── [...nextauth]/
+│               └── route.ts         → NextAuth API handler
+└── components/
+    ├── Navbar.tsx                   → Dynamic navbar (auth-aware)
+    ├── SignOutButton.tsx             → Client sign out button
+    └── SessionProvider.tsx          → Wraps app with NextAuth SessionProvider
+```
+
+---
+
+## 🚀 Getting Started
+
+```bash
+# Clone the repository
+git clone https://github.com/Oluwamighty/auth-system.git
+
+# Navigate into the project
+cd auth-system
+
+# Install dependencies
+npm install
+
+# Create .env.local file
+touch .env.local
+```
+
+Add these to `.env.local`:
+```env
+NEXTAUTH_SECRET=your_secret_here
+NEXTAUTH_URL=http://localhost:3000
+```
+
+Generate a secret:
+```bash
+npx auth secret
+```
+
+Run the development server:
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## 🌐 Deployment
+
+When deploying to Vercel, add these environment variables in your project settings:
+
+```
+NEXTAUTH_SECRET=your_secret_value
+NEXTAUTH_URL=https://your-app.vercel.app
+```
+
+---
+
+## 🔮 Future Improvements
+
+- Connect to a real database (PostgreSQL + Prisma)
+- Hash passwords with bcrypt
+- Google OAuth provider
+- Email verification
+- Password reset flow
+- Remember me functionality
+
+---
+
+## 👨‍💻 Author
+
+**Ojo Azeez Olawale**
+- GitHub: [@Oluwamighty](https://github.com/Oluwamighty)
+- Portfolio: [oluwamighty.github.io/portfolio](https://oluwamighty.github.io/portfolio)
+- Email: olawaleojo42@gmail.com
+
+---
+
+## 📄 License
+
+MIT License — feel free to use this project as a reference or starting point.
